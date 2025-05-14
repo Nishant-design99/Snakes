@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a202c; /* Tailwind gray-900 */
+            color: #a0aec0; /* Tailwind gray-400 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars from game elements */
+        }
+        #gameCanvas {
+            border: 3px solid #4a5568; /* Tailwind gray-600 */
+            background-color: #2d3748; /* Tailwind gray-800 */
+            border-radius: 0.5rem; /* Tailwind rounded-lg */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .game-controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .control-row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .control-button {
+            background-color: #4a5568; /* Tailwind gray-600 */
+            color: #e2e8f0; /* Tailwind gray-200 */
+            border: 2px solid #2d3748; /* Tailwind gray-800 */
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            font-family: 'Press Start 2P', cursive;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            transition: background-color 0.2s, transform 0.1s;
+            min-width: 60px; /* Ensure buttons have a decent tap area */
+            text-align: center;
+        }
+        .control-button:hover {
+            background-color: #2d3748; /* Tailwind gray-800 */
+        }
+        .control-button:active {
+            transform: scale(0.95);
+        }
+        #scoreBoard {
+            font-size: 1.5rem; /* Tailwind text-2xl */
+            margin-bottom: 1rem; /* Tailwind mb-4 */
+            color: #cbd5e0; /* Tailwind gray-300 */
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(45, 55, 72, 0.9); /* Tailwind gray-800 with opacity */
+            padding: 2rem; /* Tailwind p-8 */
+            border-radius: 0.5rem; /* Tailwind rounded-lg */
+            text-align: center;
+            display: none; /* Hidden by default */
+            z-index: 10;
+            border: 2px solid #4a5568; /* Tailwind gray-600 */
+        }
+        #gameOverScreen h2 {
+            font-size: 2rem; /* Tailwind text-3xl */
+            margin-bottom: 1rem; /* Tailwind mb-4 */
+            color: #e53e3e; /* Tailwind red-600 */
+        }
+        #gameOverScreen p {
+            font-size: 1.25rem; /* Tailwind text-xl */
+            margin-bottom: 1.5rem; /* Tailwind mb-6 */
+            color: #e2e8f0; /* Tailwind gray-200 */
+        }
+        #restartButton {
+            background-color: #48bb78; /* Tailwind green-500 */
+            color: white;
+            padding: 0.75rem 1.5rem; /* Tailwind py-3 px-6 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            font-family: 'Press Start 2P', cursive;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        }
+        #restartButton:hover {
+            background-color: #38a169; /* Tailwind green-600 */
+        }
+        .sr-only { /* For accessibility, hide elements visually but keep them for screen readers */
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            #gameCanvas {
+                width: 95vw; /* Make canvas responsive */
+                height: 95vw; /* Maintain aspect ratio, adjust as needed */
+            }
+            .control-button {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            #scoreBoard {
+                font-size: 1.2rem;
+            }
+            #gameOverScreen h2 {
+                font-size: 1.5rem;
+            }
+            #gameOverScreen p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="scoreBoard" aria-live="polite">Score: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="game-controls">
+        <div class="control-row">
+            <button id="upButton" class="control-button" aria-label="Move Up">U</button>
+        </div>
+        <div class="control-row">
+            <button id="leftButton" class="control-button" aria-label="Move Left">L</button>
+            <button id="downButton" class="control-button" aria-label="Move Down">D</button>
+            <button id="rightButton" class="control-button" aria-label="Move Right">R</button>
+        </div>
+    </div>
+
+    <div id="gameOverScreen">
+        <h2>Game Over!</h2>
+        <p id="finalScore">Your Score: 0</p>
+        <button id="restartButton">Restart Game</button>
+    </div>
+
+    <script>
+        // Game Canvas and Context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game Elements
+        const scoreBoard = document.getElementById('scoreBoard');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+
+        // Control Buttons
+        const upButton = document.getElementById('upButton');
+        const downButton = document.getElementById('downButton');
+        const leftButton = document.getElementById('leftButton');
+        const rightButton = document.getElementById('rightButton');
+
+        // Game Settings
+        let gridSize = 20; // Number of cells in a row/column
+        let tileSize; // Size of each cell, calculated dynamically
+        let snake, food, dx, dy, score, gameLoopTimeout, gameSpeed;
+        let changingDirection = false; // Prevents rapid 180-degree turns
+
+        // Function to initialize/reset game variables
+        function initializeGame() {
+            // Make canvas responsive
+            const availableWidth = window.innerWidth * 0.9;
+            const availableHeight = window.innerHeight * 0.6; // Adjust as needed
+            const canvasSize = Math.min(availableWidth, availableHeight, 400); // Max size 400px
+
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            tileSize = canvas.width / gridSize;
+
+            // Initial snake position and direction
+            snake = [
+                { x: Math.floor(gridSize / 2), y: Math.floor(gridSize / 2) }, // Head
+                { x: Math.floor(gridSize / 2) - 1, y: Math.floor(gridSize / 2) }, // Body
+                { x: Math.floor(gridSize / 2) - 2, y: Math.floor(gridSize / 2) }  // Tail
+            ];
+            dx = 1; // Initial movement to the right
+            dy = 0;
+            score = 0;
+            gameSpeed = 150; // Milliseconds per frame (lower is faster)
+            updateScoreDisplay();
+            createFood();
+            gameOverScreen.style.display = 'none';
+            changingDirection = false;
+            if (gameLoopTimeout) clearTimeout(gameLoopTimeout); // Clear any existing loop
+            gameLoop();
+        }
+
+
+        // --- Drawing Functions ---
+        function drawRect(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * tileSize, y * tileSize, tileSize -1 , tileSize -1); // -1 for grid lines
+            ctx.strokeStyle = "#2d3748"; // Darker border for cells
+            ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+        }
+
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                // Head different color
+                const color = index === 0 ? '#48bb78' : '#68d391'; // Green shades
+                drawRect(segment.x, segment.y, color);
+            });
+        }
+
+        function drawFood() {
+            drawRect(food.x, food.y, '#f56565'); // Red for food
+        }
+
+        // --- Game Logic ---
+        function createFood() {
+            food = {
+                x: Math.floor(Math.random() * gridSize),
+                y: Math.floor(Math.random() * gridSize)
+            };
+            // Ensure food doesn't spawn on the snake
+            snake.forEach(segment => {
+                if (segment.x === food.x && segment.y === food.y) {
+                    createFood(); // Recursively create new food if collision
+                }
+            });
+        }
+
+        function updateSnakePosition() {
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head); // Add new head
+
+            // Check if snake ate food
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                updateScoreDisplay();
+                createFood();
+                // Increase speed slightly (optional)
+                if (gameSpeed > 50) gameSpeed -= 5;
+            } else {
+                snake.pop(); // Remove tail if no food eaten
+            }
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+
+            // Wall collision
+            if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize) {
+                return true;
+            }
+
+            // Self-collision (check if head collides with any body segment)
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updateScoreDisplay() {
+            scoreBoard.textContent = `Score: ${score}`;
+        }
+
+        function gameOver() {
+            clearTimeout(gameLoopTimeout);
+            finalScoreDisplay.textContent = `Your Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // --- Game Loop ---
+        function gameLoop() {
+            if (checkCollision()) {
+                gameOver();
+                return;
+            }
+
+            changingDirection = false; // Reset after a move
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+            drawFood();
+            updateSnakePosition();
+            drawSnake();
+
+            gameLoopTimeout = setTimeout(gameLoop, gameSpeed);
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('keydown', changeDirection);
+        restartButton.addEventListener('click', initializeGame);
+
+        // On-screen button controls
+        upButton.addEventListener('click', () => setDirection(0, -1));
+        downButton.addEventListener('click', () => setDirection(0, 1));
+        leftButton.addEventListener('click', () => setDirection(-1, 0));
+        rightButton.addEventListener('click', () => setDirection(1, 0));
+
+        function setDirection(newDx, newDy) {
+            // Prevent immediate 180-degree turn or multiple direction changes before next game tick
+            if (changingDirection) return;
+
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingLeft = dx === -1;
+            const goingRight = dx === 1;
+
+            if (newDx === -dx && newDy === 0 && (goingLeft || goingRight)) return; // Prevent reversing X
+            if (newDy === -dy && newDx === 0 && (goingUp || goingDown)) return; // Prevent reversing Y
+
+            dx = newDx;
+            dy = newDy;
+            changingDirection = true;
+        }
+
+
+        function changeDirection(event) {
+            if (changingDirection) return;
+
+            const LEFT_KEY = 37;
+            const RIGHT_KEY = 39;
+            const UP_KEY = 38;
+            const DOWN_KEY = 40;
+
+            const keyPressed = event.keyCode;
+
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingLeft = dx === -1;
+            const goingRight = dx === 1;
+
+            if (keyPressed === LEFT_KEY && !goingRight) {
+                dx = -1;
+                dy = 0;
+                changingDirection = true;
+            } else if (keyPressed === UP_KEY && !goingDown) {
+                dx = 0;
+                dy = -1;
+                changingDirection = true;
+            } else if (keyPressed === RIGHT_KEY && !goingLeft) {
+                dx = 1;
+                dy = 0;
+                changingDirection = true;
+            } else if (keyPressed === DOWN_KEY && !goingUp) {
+                dx = 0;
+                dy = 1;
+                changingDirection = true;
+            }
+        }
+
+        // Handle window resize to keep canvas responsive
+        window.addEventListener('resize', () => {
+            // We need to re-initialize the game to adjust tile sizes etc.
+            // This will reset the current game, which is a common behavior.
+            // Alternatively, one could try to scale existing game elements, but that's more complex.
+            if (!gameOverScreen.style.display || gameOverScreen.style.display === 'none') {
+                 // Only re-initialize if game is active, or it will restart a finished game on resize.
+                clearTimeout(gameLoopTimeout); // Stop current loop before re-init
+                initializeGame();
+            } else {
+                // If game over screen is shown, just resize canvas for it
+                const availableWidth = window.innerWidth * 0.9;
+                const availableHeight = window.innerHeight * 0.6;
+                const canvasSize = Math.min(availableWidth, availableHeight, 400);
+                canvas.width = canvasSize;
+                canvas.height = canvasSize;
+                // No need to redraw if game over, but good to keep canvas size consistent
+            }
+        });
+
+        // Initial game setup
+        initializeGame();
+
+    </script>
+</body>
+</html>
