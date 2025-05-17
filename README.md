@@ -37,7 +37,7 @@ A modern, feature-rich implementation of the classic Snake game built with HTML5
 
 ## How to Play
 
-1. Open `snakes.html` in a modern web browser
+1. Visit https://nishant-design99.github.io/Snakes/ in a modern web browser
 2. Select your preferred theme from the dropdown menu
 3. Use arrow keys or on-screen buttons to control the snake
 4. Eat the food to grow and increase your score
@@ -46,12 +46,15 @@ A modern, feature-rich implementation of the classic Snake game built with HTML5
 
 ## Installation
 
-No installation required! Simply clone the repository and open `snakes.html` in your web browser:
+You can play the game online at: https://nishant-design99.github.io/Snakes/
 
+If you want to run it locally:
 ```bash
 git clone https://github.com/Nishant-design99/Snakes.git
 cd Snakes
-# Open snakes.html in your preferred browser
+# Start a local server (you can use Python's built-in server)
+python3 -m http.server
+# Then visit http://localhost:8000 in your browser
 ```
 
 ## Technologies Used
